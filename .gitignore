@@ -1,0 +1,11 @@
+# Aiken
+artifacts/
+build/
+docs/
+aiken.lock
+plutus.json
+/cnt-burn.json
+!test/cnt-burn.json
+
+# node
+node_modules
