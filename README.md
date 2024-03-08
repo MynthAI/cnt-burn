@@ -30,7 +30,7 @@ This script can be deployed as a Cardano reference script. To deploy,
 run:
 
 ``` sh
-npx tsx offchain/run.ts
+npx tsx offchain/entrypoints/deploy.ts
 ```
 
 During this process you’ll need a Cardano wallet funded with ADA and one
@@ -38,11 +38,9 @@ token you’d like to burn. After running this script, a `cnt-burn.json`
 file will be generated. This file can be passed into off-chain functions
 to burn tokens.
 
-## Burning
+## Usage
 
-The \[offchain\] directory contains off-chain logic required to interact
-with the smart contract. For usage, refer to \[tests\], specifically
-\[tests/burn.test.ts\] for how to burn tokens.
+For burning tokens, the `npx burn` CLI can be used.
 
 ## Setting Up Vault Secrets
 
