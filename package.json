@@ -13,8 +13,13 @@
     "aiken:test": "concurrently \"aiken check\"",
     "test": "aiken build && npx ava"
   },
+  "bin": {
+    "burn": "./bin/burn"
+  },
   "dependencies": {
+    "commander": "^11.1.0",
     "config": "^3.3.9",
+    "decimal.js": "^10.4.3",
     "enquirer": "^2.4.1",
     "mynth-helper": "^1.3.12",
     "ts-res": "^1.1.1"

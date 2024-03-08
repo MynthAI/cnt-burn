@@ -10,20 +10,25 @@ import {
   SpendingValidator,
   UTxO,
 } from "lucid-cardano";
-import { invariant } from "mynth-helper";
+import {
+  getBlockfrostApi,
+  getLucid,
+  getStakeKey,
+  invariant,
+} from "mynth-helper";
+import { Err, Ok, Result } from "ts-res";
 
 const Void = "d87a80";
 const VoidDatum = { inline: Void };
 
 const getBalance = (utxos: UTxO[]) => {
-  const balances: Assets = {};
   return utxos.reduce((balances, utxo) => {
     Object.entries(utxo.assets).forEach(([assetId, balance]) => {
       balances[assetId] = (balances[assetId] || 0n) + balance;
     });
 
     return balances;
-  }, balances);
+  }, {} as Assets);
 };
 
 const readValidator = async (path: string): Promise<SpendingValidator> => {
@@ -55,18 +60,20 @@ const loadUtxoFromFile = async (path: string): Promise<UTxO> => {
   return utxo;
 };
 
-const getDatumHash = (lucid: Lucid, address: Address) => {
+const getDatum = (lucid: Lucid, address: Address) => {
   const details = lucid.utils.getAddressDetails(address);
   invariant(
     details.paymentCredential,
     `Could not determine address from ${address}`
   );
 
-  return C.hash_plutus_data(
-    C.PlutusData.from_bytes(
-      fromHex(Data.to(new Constr(0, [details.paymentCredential.hash])))
-    )
-  ).to_hex();
+  return Data.to(new Constr(0, [details.paymentCredential.hash]));
+};
+
+const getDatumHash = (lucid: Lucid, address: Address) => {
+  const datum = getDatum(lucid, address);
+
+  return C.hash_plutus_data(C.PlutusData.from_bytes(fromHex(datum))).to_hex();
 };
 
 const filterUtxos = (utxos: UTxO[], datumHash?: string) =>
@@ -74,12 +81,51 @@ const filterUtxos = (utxos: UTxO[], datumHash?: string) =>
     (utxo) => utxo.datum == Void || (datumHash && utxo.datumHash == datumHash)
   );
 
+const loadLucidFromAddress = async (
+  blockfrostApiKey: string,
+  address: string
+) => {
+  const blockfrost = getBlockfrostApi(blockfrostApiKey);
+  const [addresses, lucid] = await Promise.all([
+    blockfrost.accountsAddresses(getStakeKey(address)),
+    getLucid(blockfrostApiKey),
+  ]);
+
+  const utxos = (
+    await Promise.all(
+      addresses.map((address) => lucid.utxosAt(address.address))
+    )
+  ).flat();
+
+  lucid.selectWalletFrom({ address, utxos });
+  return lucid;
+};
+
+const processError = async <T>(
+  l: () => Promise<T>
+): Promise<Result<T, string>> => {
+  try {
+    return Ok(await l());
+  } catch (error) {
+    if (typeof error === "string") {
+      return Err(error);
+    } else if (error instanceof Error) {
+      return Err(error.message);
+    } else {
+      return Err(JSON.stringify(error));
+    }
+  }
+};
+
 export {
   filterUtxos,
   getBalance,
   getContractAddress,
+  getDatum,
   getDatumHash,
+  loadLucidFromAddress,
   loadUtxoFromFile,
+  processError,
   readValidator,
   Void,
   VoidDatum,
